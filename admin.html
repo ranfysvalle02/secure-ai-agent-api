@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MongoDB CSFLE Secure AI Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Faker/3.1.0/faker.min.js"></script>
+    <link rel="preconnect" href="https://rsms.me/">
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            -webkit-font-smoothing: antialiased; 
+            -moz-osx-font-smoothing: grayscale;
+            background-color: #020617; /* slate-950 */
+            background-image: radial-gradient(circle at 1px 1px, #334155 1px, transparent 0);
+            background-size: 2rem 2rem;
+        }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse-red { 0%, 100% { background-color: rgba(239, 68, 68, 0.2); } 50% { background-color: rgba(239, 68, 68, 0.3); } }
+        @keyframes pulse-green { 0%, 100% { color: #4ade80; } 50% { color: #86efac; } }
+
+        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+
+        .control-deck {
+            background: rgba(15, 23, 42, 0.6); /* slate-900/60 */
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(51, 65, 85, 0.7); /* slate-700/70 */
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .zone {
+            background: rgba(15, 23, 42, 0.6); /* slate-900/60 */
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(51, 65, 85, 0.5); /* slate-700/50 */
+            border-radius: 0.75rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .danger-zone { box-shadow: inset 0 0 20px rgba(220, 38, 38, 0.2); border-color: rgba(220, 38, 38, 0.3); }
+        .secure-enclave { box-shadow: inset 0 0 20px rgba(34, 197, 94, 0.2); border-color: rgba(34, 197, 94, 0.3); }
+
+        .pii-leak {
+            display: block;
+            width: 100%;
+            border-radius: 4px;
+            animation: pulse-red 2s infinite ease-in-out;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+            margin: 2px 0;
+        }
+        .encrypted-data {
+            color: #4ade80;
+            background-color: rgba(34, 197, 94, 0.1);
+            padding: 0 6px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        
+        .log-pre {
+            background-color: rgba(2, 6, 23, 0.5); /* slate-950/50 */
+            border: 1px solid #1e293b; /* slate-800 */
+        }
+    </style>
+</head>
+<body class="text-slate-300">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        <header class="control-deck p-6 mb-8 fade-in">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-4">
+                <h1 class="text-2xl font-bold text-white tracking-tight">AI Agent for Sensitive Data</h1>
+                <div id="api-status" class="flex items-center space-x-2 text-xs">
+                    <span class="text-slate-400">API Status:</span>
+                    <div id="api-indicator" class="w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse" title="Checking..."></div>
+                </div>
+            </div>
+
+             <div id="auth-panel">
+                <div class="flex border-b border-slate-700 mb-4">
+                    <button id="show-register-btn" class="px-4 py-2 text-sm font-medium text-white border-b-2 border-indigo-500">Register Demo User</button>
+                    <button id="show-login-btn" class="px-4 py-2 text-sm font-medium text-slate-400 border-b-2 border-transparent">Login</button>
+                </div>
+                <form id="login-form" class="hidden">
+                    <div class="flex flex-col md:flex-row items-center gap-3">
+                        <input type="email" id="login-email" name="username" required class="flex-grow w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-white" placeholder="you@example.com">
+                        <input type="password" name="password" required class="flex-grow w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-white" placeholder="••••••••">
+                        <button type="submit" class="w-full md:w-auto shrink-0 bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors">Sign In</button>
+                    </div>
+                </form>
+                <form id="register-form">
+                    <p class="text-xs text-slate-400 mb-2">Random data generated. Click below to encrypt and save the user.</p>
+                    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-3">
+                        <input type="email" id="register-email" name="email" required class="bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-white text-sm" placeholder="Email">
+                        <input type="password" id="register-password" name="password" required class="bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-white text-sm" placeholder="Password">
+                        <input type="text" id="register-name" name="full_name" required class="bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-white text-sm" placeholder="Full Name">
+                        <input type="text" id="register-ssn" name="ssn" required class="bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-white text-sm" placeholder="SSN">
+                        <input type="number" id="register-salary" name="salary" required class="bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-white text-sm" placeholder="Salary">
+                        <input type="text" id="register-notes" name="medical_notes" required class="bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-white text-sm" placeholder="Medical Notes">
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600/80 text-white font-semibold py-2 rounded-md hover:bg-indigo-600 transition-colors">Create Account & Encrypt</button>
+                </form>
+            </div>
+
+            <div id="query-panel" class="hidden">
+                 <div class="bg-slate-700/30 p-4 rounded-md flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
+                    <div class="text-sm font-medium">
+                        <span class="text-green-400 animate-pulse-green">●</span> Logged In: <span id="user-email" class="font-mono text-indigo-300"></span>
+                    </div>
+                    <button id="logout-btn" class="w-full md:w-auto bg-rose-600/80 text-white font-semibold py-2 px-4 rounded-md hover:bg-rose-600 transition-colors text-sm">Logout</button>
+                </div>
+                <form id="agent-query-form">
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Ask the AI about your (the logged in user's) data:</label>
+                    <div class="flex gap-3">
+                        <input type="text" id="agent-query-input" required class="flex-grow w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-white placeholder-slate-500" placeholder="e.g., What is my salary and medical history?">
+                        <button type="submit" class="shrink-0 bg-sky-600 text-white font-semibold py-2 px-5 rounded-md hover:bg-sky-700 transition-colors">Ask Agent</button>
+                    </div>
+                </form>
+            </div>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <section class="zone danger-zone p-6 fade-in" style="animation-delay: 0.2s;">
+                <div class="text-center mb-4">
+                    <h2 class="text-2xl font-bold text-red-400">🔴 Danger Zone</h2>
+                    <p class="text-slate-400 text-sm">Insecure Logging of Agent Activity</p>
+                </div>
+                <div id="insecure-results" class="hidden">
+                    <h3 class="font-semibold text-white mb-1">Agent's Final Answer:</h3>
+                    <div id="insecure-answer" class="log-pre p-3 rounded-md text-sm mb-4"></div>
+                    <h3 class="font-semibold text-white mb-1">Raw Log Saved to Database:</h3>
+                    <p class="text-xs text-slate-500 mb-2">PII was decrypted in memory by the agent and saved in plaintext. <strong class="text-red-400">This is a critical data leak.</strong></p>
+                    <pre id="insecure-trace-log" class="log-pre text-xs font-mono whitespace-pre-wrap p-3 rounded-md h-96 overflow-y-auto"></pre>
+                </div>
+            </section>
+
+            <section class="zone secure-enclave p-6 fade-in" style="animation-delay: 0.4s;">
+                 <div class="text-center mb-4">
+                    <h2 class="text-2xl font-bold text-green-400">🟢 Secure Enclave</h2>
+                    <p class="text-slate-400 text-sm">Secure Logging with CSFLE</p>
+                </div>
+                 <div id="secure-results" class="hidden">
+                    <h3 class="font-semibold text-white mb-1">Agent's Final Answer:</h3>
+                    <div id="secure-answer" class="log-pre p-3 rounded-md text-sm mb-4"></div>
+                    <h3 class="font-semibold text-white mb-1">Secure Log Saved to Database:</h3>
+                    <p class="text-xs text-slate-500 mb-2">PII was automatically re-encrypted before logging. <strong class="text-green-400">Data is safe at rest.</strong></p>
+                    <pre id="secure-trace-log" class="log-pre text-xs font-mono whitespace-pre-wrap p-3 rounded-md h-96 overflow-y-auto"></pre>
+                </div>
+            </section>
+        </main>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const API_BASE_URL = 'https://localhost:8000';
+    // --- DOM Elements ---
+    const authPanel = document.getElementById('auth-panel');
+    const queryPanel = document.getElementById('query-panel');
+    const userEmailSpan = document.getElementById('user-email');
+    const agentQueryForm = document.getElementById('agent-query-form');
+    // Result panels
+    const insecureResults = document.getElementById('insecure-results');
+    const secureResults = document.getElementById('secure-results');
+    const insecureAnswer = document.getElementById('insecure-answer');
+    const secureAnswer = document.getElementById('secure-answer');
+    const insecureTraceLog = document.getElementById('insecure-trace-log');
+    const secureTraceLog = document.getElementById('secure-trace-log');
+    
+    let state = { isLoggedIn: false, user: null };
+
+    const updateUI = () => {
+        const isLoggedIn = state.isLoggedIn;
+        authPanel.classList.toggle('hidden', isLoggedIn);
+        queryPanel.classList.toggle('hidden', !isLoggedIn);
+        if (isLoggedIn) {
+            userEmailSpan.textContent = state.user.email;
+        } else {
+            // Hide results when logging out
+            insecureResults.classList.add('hidden');
+            secureResults.classList.add('hidden');
+        }
+    };
+    
+    const apiFetch = async (endpoint, options = {}) => {
+        const mergedOptions = { ...{ headers: { 'Content-Type': 'application/json' }, credentials: 'include' }, ...options };
+        try {
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, mergedOptions);
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.detail || `HTTP Error ${response.status}`);
+            return data;
+        } catch (error) {
+            console.error(`API Error: ${error.message}`);
+            throw error;
+        }
+    };
+    
+    // --- Login/Register Logic ---
+    document.getElementById('login-form').addEventListener('submit', async e => {
+        e.preventDefault();
+        const formData = new URLSearchParams(new FormData(e.target));
+        try {
+            await apiFetch('/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData });
+            await fetchCurrentUser();
+        } catch (e) { alert('Login Failed!'); }
+    });
+
+    document.getElementById('register-form').addEventListener('submit', async e => {
+        e.preventDefault();
+        const data = Object.fromEntries(new FormData(e.target));
+        try {
+            const result = await apiFetch('/auth/register', { method: 'POST', body: JSON.stringify(data) });
+            alert(`User ${result.email} registered! Please log in.`);
+            document.getElementById('login-email').value = data.email;
+            document.getElementById('show-login-btn').click();
+        } catch (e) { alert('Registration Failed!'); }
+    });
+    
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+        await apiFetch('/auth/logout', { method: 'POST' });
+        state = { isLoggedIn: false, user: null };
+        updateUI();
+    });
+    
+    // --- Main Agent Logic ---
+    agentQueryForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const input = document.getElementById('agent-query-input');
+        const query = input.value.trim();
+        if (!query) return;
+
+        insecureResults.classList.add('hidden');
+        secureResults.classList.add('hidden');
+        
+        try {
+            const response = await apiFetch('/agent/ask', { method: 'POST', body: JSON.stringify({ query }) });
+            insecureAnswer.textContent = response.answer;
+            secureAnswer.textContent = response.answer;
+            fetchAndDisplayTraces(response.insecure_trace_id, response.secure_trace_id);
+        } catch(err) { alert(`Agent query failed: ${err.message}`); }
+    });
+
+    // --- Enhanced Trace Display ---
+    const fetchAndDisplayTraces = async (insecureId, secureId) => {
+        const sensitiveKeys = ['ssn', 'salary', 'medical_notes'];
+        
+        // Fetch and render insecure trace with PII highlighting
+        const insecureData = await apiFetch(`/agent/traces/${insecureId}?secure=false`);
+        let insecureHtml = JSON.stringify(insecureData, null, 2);
+        sensitiveKeys.forEach(key => {
+            const regex = new RegExp(`^\\s*"${key}":\\s*".*?"`, 'gm');
+            insecureHtml = insecureHtml.replace(regex, match => `<span class="pii-leak">${match}</span>`);
+        });
+        insecureTraceLog.innerHTML = insecureHtml;
+
+        // Fetch and render secure trace with encryption highlighting
+        const secureData = await apiFetch(`/agent/traces/${secureId}?secure=true`);
+        let secureHtml = JSON.stringify(secureData, null, 2);
+        secureHtml = secureHtml.replace(/"<ENCRYPTED DATA>"/g, `<span class="encrypted-data">"&lt;ENCRYPTED&gt;"</span>`);
+        secureTraceLog.innerHTML = secureHtml;
+        
+        insecureResults.classList.remove('hidden');
+        secureResults.classList.remove('hidden');
+    };
+
+    const fetchCurrentUser = async () => {
+        try {
+            state.user = await apiFetch('/users/me');
+            state.isLoggedIn = true;
+        } catch (e) {
+            state.isLoggedIn = false;
+            state.user = null;
+        } finally {
+            updateUI();
+        }
+    };
+
+    const setupAuthTabs = () => {
+        const loginBtn = document.getElementById('show-login-btn');
+        const regBtn = document.getElementById('show-register-btn');
+        const loginForm = document.getElementById('login-form');
+        const regForm = document.getElementById('register-form');
+        loginBtn.addEventListener('click', () => {
+            loginForm.classList.remove('hidden'); regForm.classList.add('hidden');
+            loginBtn.classList.add('text-white', 'border-indigo-500'); regBtn.classList.remove('text-white', 'border-indigo-500');
+        });
+        regBtn.addEventListener('click', () => {
+            loginForm.classList.add('hidden'); regForm.classList.remove('hidden');
+            regBtn.classList.add('text-white', 'border-indigo-500'); loginBtn.classList.remove('text-white', 'border-indigo-500');
+        });
+    };
+
+    const populateRandomData = () => {
+        document.getElementById('register-email').value = faker.internet.email().toLowerCase();
+        document.getElementById('register-password').value = 'password123';
+        document.getElementById('register-name').value = faker.name.findName();
+        document.getElementById('register-ssn').value = `${faker.random.number({min:100, max:999})}-${faker.random.number({min:10, max:99})}-${faker.random.number({min:1000, max:9999})}`;
+        document.getElementById('register-salary').value = faker.random.number({min: 50000, max: 150000});
+        document.getElementById('register-notes').value = "Patient reports mild seasonal allergies.";
+    };
+
+    const init = async () => {
+        const indicator = document.getElementById('api-indicator');
+        try {
+            await fetch(`${API_BASE_URL}/`);
+            indicator.className = 'w-2.5 h-2.5 rounded-full bg-green-500';
+        } catch (e) {
+            indicator.className = 'w-2.5 h-2.5 rounded-full bg-red-500';
+            alert('API is offline. Please ensure the backend server is running with HTTPS enabled.');
+        }
+        setupAuthTabs();
+        populateRandomData();
+        fetchCurrentUser();
+    };
+
+    init();
+});
+</script>
+
+</body>
+</html>

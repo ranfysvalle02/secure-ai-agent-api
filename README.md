@@ -87,40 +87,4 @@ Besides CSFLE, organizations can employ several other techniques to ensure that 
 
 * **In-Memory-Only Processing:** Design the agent's data pipeline to operate as a closed loop in memory. The decrypted data is loaded, used to formulate the answer, and then immediately purged from memory without ever touching a disk. The log would only record a reference to the data, such as a database ID or an encrypted hash, proving that the tool was called and the operation was successful without ever exposing the raw data.
 
----
-
-### How it Works in DocumentDB or FerretDB
-
-The fundamental challenge with DocumentDB and FerretDB is that they don't have a native client-side encryption feature like MongoDB's CSFLE. This means the re-encryption logic must be implemented manually at the application level.
-
-### Secure Logging Without Native CSFLE
-
-The absence of a native client-side encryption feature like MongoDB's CSFLE in databases like DocumentDB and FerretDB means developers must manually implement the re-encryption logic at the application layer. This shifts the burden and introduces complexity.
-
-| Feature | MongoDB with CSFLE | DocumentDB / FerretDB |
-| :--- | :--- | :--- |
-| **Core Principle** | **Transparent Client-Side Encryption**. The driver automatically handles encryption and decryption based on a defined schema.  | **Manual Application-Level Encryption**. The developer must write explicit code to encrypt and decrypt sensitive fields before and after they are in memory. |
-| **Developer Effort**| **Low**. The developer focuses on defining the encryption rules. The driver takes care of the rest. This is a "set it and forget it" model for the core encryption process. | **High**. The developer must choose and integrate a cryptographic library, manage keys, and ensure every sensitive field is re-encrypted before logging. |
-| **Key Management**| Handled securely by the CSFLE framework, often integrating with a Key Management Service (KMS) like AWS KMS or Azure Key Vault. | The developer must manually integrate with a KMS or manage keys in a secure way, introducing potential for misconfiguration. |
-| **Queryability**| Supports **Queryable Encryption**, allowing you to perform equality queries on deterministically encrypted data without decryption. | No native Queryable Encryption. To query encrypted data, you typically need to decrypt the entire dataset, which is inefficient and a security risk. |
-| **Solution for Logging**| The CSFLE-enabled driver handles the re-encryption of sensitive data before it is persisted in the logs. This is a native and seamless process. | A custom-built function must be called on every sensitive field before writing to the log. This is a point of potential human error. |
-
-The key takeaway is that without a technology like CSFLE, achieving the same level of security requires a significant **manual development overhead**. This includes managing a separate cryptographic library, handling key management, and creating custom functions to explicitly re-encrypt data. This effort can be a source of security vulnerabilities if not implemented perfectly, which is why a native solution is so valuable.
-
-In both cases, the key difference is the **lack of transparent, client-side encryption**. This shifts the responsibility from the database driver (like the one used with CSFLE) to the application developer, who must manually handle the re-encryption of sensitive data before it is persisted in the logs.
-
----
-
-#### What is MongoDB Queryable Encryption?
-
-MongoDB's approach is to build queryable encryption directly into the database and its official drivers. The process is client-side, meaning the encryption happens on the client application before the data ever leaves for the database server. MongoDB Queryable Encryption uses a specialized cryptographic library to perform encryption and decryption, and it supports queries on randomly encrypted data. It's a "no-proxy" solution, which means it doesn't require an intermediary service. This can reduce complexity and cost.
-
-#### What About Other Folks?
-
-Companies like Sotero and Baffle.io take a different approach, often using a **proxy** that sits between the client application and the database.
-
-  * **Sotero:** Sotero's platform uses a proxy to intercept database queries. The proxy encrypts data before it's sent to the database and decrypts it when it's retrieved. It's a "no-code" solution in the sense that it doesn't require significant application changes. Because it's a proxy, it can work with multiple database types (MongoDB, PostgreSQL, SQL Server, etc.). However, adding a proxy introduces another component that must be maintained, secured, and scaled. This adds to the overall system complexity, a trade-off for its multi-platform and no-code benefits.
-
-  * **Baffle.io:** Similar to Sotero, Baffle.io uses a data protection proxy. This proxy intercepts database queries and handles encryption and decryption transparently to the application. It offers a variety of data protection methods, including encryption and tokenization, and supports complex queries like search and sort on encrypted data. Like Sotero, Baffle.io's proxy-based model provides "no-code" data protection that works across various databases, but it introduces the same trade-offs of added infrastructure, complexity, and cost associated with a proxy.
-
 The key takeaway is that proxy-based solutions, while flexible, introduce **more attack surface, more complexity, and more cost** compared to a native solution that is seamlessly integrated into the data platform itself. MongoDB Atlas is a data platform that integrates these features directly.

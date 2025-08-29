@@ -55,6 +55,8 @@ This ensures that the final log record, saved to the `SecureAgentTrace` collecti
 
 The result is a fully auditable record that provides all the necessary context for debugging and governance—the tool was called, the inputs were used—without ever exposing the underlying sensitive data.
 
+![](mdb-csfle-compass.png)
+
 -----
 
 ### The Path Forward: From Vulnerability to Trust

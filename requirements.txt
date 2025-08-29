@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+PyJWT
+beanie[motor] # For async MongoDB with Beanie
+motor
+pwdlib
+python-dotenv
+slowapi
+pymongo[encryption] # For CSFLE functionality
+langchain
+langchain-core
+langchain-openai
+langchain-community
+openai

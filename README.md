@@ -108,3 +108,19 @@ The absence of a native client-side encryption feature like MongoDB's CSFLE in d
 The key takeaway is that without a technology like CSFLE, achieving the same level of security requires a significant **manual development overhead**. This includes managing a separate cryptographic library, handling key management, and creating custom functions to explicitly re-encrypt data. This effort can be a source of security vulnerabilities if not implemented perfectly, which is why a native solution is so valuable.
 
 In both cases, the key difference is the **lack of transparent, client-side encryption**. This shifts the responsibility from the database driver (like the one used with CSFLE) to the application developer, who must manually handle the re-encryption of sensitive data before it is persisted in the logs.
+
+---
+
+#### What is MongoDB Queryable Encryption?
+
+MongoDB's approach is to build queryable encryption directly into the database and its official drivers. The process is client-side, meaning the encryption happens on the client application before the data ever leaves for the database server. MongoDB Queryable Encryption uses a specialized cryptographic library to perform encryption and decryption, and it supports queries on randomly encrypted data. It's a "no-proxy" solution, which means it doesn't require an intermediary service. This can reduce complexity and cost.
+
+#### What About Other Folks?
+
+Companies like Sotero and Baffle.io take a different approach, often using a **proxy** that sits between the client application and the database.
+
+  * **Sotero:** Sotero's platform uses a proxy to intercept database queries. The proxy encrypts data before it's sent to the database and decrypts it when it's retrieved. It's a "no-code" solution in the sense that it doesn't require significant application changes. Because it's a proxy, it can work with multiple database types (MongoDB, PostgreSQL, SQL Server, etc.). However, adding a proxy introduces another component that must be maintained, secured, and scaled. This adds to the overall system complexity, a trade-off for its multi-platform and no-code benefits.
+
+  * **Baffle.io:** Similar to Sotero, Baffle.io uses a data protection proxy. This proxy intercepts database queries and handles encryption and decryption transparently to the application. It offers a variety of data protection methods, including encryption and tokenization, and supports complex queries like search and sort on encrypted data. Like Sotero, Baffle.io's proxy-based model provides "no-code" data protection that works across various databases, but it introduces the same trade-offs of added infrastructure, complexity, and cost associated with a proxy.
+
+The key takeaway is that proxy-based solutions, while flexible, introduce **more attack surface, more complexity, and more cost** compared to a native solution that is seamlessly integrated into the data platform itself. MongoDB Atlas is a data platform that integrates these features directly.

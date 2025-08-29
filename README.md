@@ -62,3 +62,11 @@ The result is a fully auditable record that provides all the necessary context f
 The evolution of AI agents demands a similar evolution in our security practices. It is no longer enough to simply protect the database; we must secure the entire data pipeline, including the shadows where agents operate. By embracing technologies like MongoDB's CSFLE, we can build applications that are not only powerful but also fundamentally trustworthy.
 
 This shifts the conversation from "Is our data safe?" to the more profound and necessary question: **"Can we prove it?"** With a CSFLE-enabled logging strategy, the answer is a resounding "yes."
+
+---
+
+### Appendix: What is an Enclave?
+
+An **enclave** is a term used to describe a secure, isolated environment within a larger system. . The concept is borrowed from geography, where an enclave is a territory completely surrounded by another. Similarly, a technology enclave is a protected space where sensitive operations can occur without risk of interference from the outside.
+
+In the context of our AI agent, the software-based enclave is created by our CSFLE-powered process. The agent operates within a larger, less-secure application, but its handling of sensitive data is confined to a protected "enclave" where data is either encrypted or in-memory, never persisted to a less-secure location like a plaintext log file. This ensures that even if the rest of the application is compromised, the sensitive data remains protected.

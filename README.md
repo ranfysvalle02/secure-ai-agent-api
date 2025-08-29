@@ -93,26 +93,18 @@ Besides CSFLE, organizations can employ several other techniques to ensure that 
 
 The fundamental challenge with DocumentDB and FerretDB is that they don't have a native client-side encryption feature like MongoDB's CSFLE. This means the re-encryption logic must be implemented manually at the application level.
 
-#### Amazon DocumentDB
+### Secure Logging Without Native CSFLE
 
-Amazon DocumentDB supports encryption-at-rest at the cluster level, which means data is encrypted when it's stored on the disk. However, this is server-side encryption and does **not** protect against the plaintext logging issue you describe.
+The absence of a native client-side encryption feature like MongoDB's CSFLE in databases like DocumentDB and FerretDB means developers must manually implement the re-encryption logic at the application layer. This shifts the burden and introduces complexity.
 
-To achieve a similar secure logging outcome with DocumentDB, you would need to:
+| Feature | MongoDB with CSFLE | DocumentDB / FerretDB |
+| :--- | :--- | :--- |
+| **Core Principle** | **Transparent Client-Side Encryption**. The driver automatically handles encryption and decryption based on a defined schema.  | **Manual Application-Level Encryption**. The developer must write explicit code to encrypt and decrypt sensitive fields before and after they are in memory. |
+| **Developer Effort**| **Low**. The developer focuses on defining the encryption rules. The driver takes care of the rest. This is a "set it and forget it" model for the core encryption process. | **High**. The developer must choose and integrate a cryptographic library, manage keys, and ensure every sensitive field is re-encrypted before logging. |
+| **Key Management**| Handled securely by the CSFLE framework, often integrating with a Key Management Service (KMS) like AWS KMS or Azure Key Vault. | The developer must manually integrate with a KMS or manage keys in a secure way, introducing potential for misconfiguration. |
+| **Queryability**| Supports **Queryable Encryption**, allowing you to perform equality queries on deterministically encrypted data without decryption. | No native Queryable Encryption. To query encrypted data, you typically need to decrypt the entire dataset, which is inefficient and a security risk. |
+| **Solution for Logging**| The CSFLE-enabled driver handles the re-encryption of sensitive data before it is persisted in the logs. This is a native and seamless process. | A custom-built function must be called on every sensitive field before writing to the log. This is a point of potential human error. |
 
-1.  **Retrieve Data:** The agent's tool connects to the DocumentDB instance and fetches the data. Since the data is decrypted transparently on the server-side, it exists in plaintext in your application's memory.
-
-2.  **Manual Re-encryption:** Your application code must explicitly re-encrypt the sensitive fields before logging. Instead of using a native CSFLE method, you'd use a general-purpose cryptographic library (e.g., AWS KMS, OpenSSL) to encrypt the fields you want to protect. You would need to manage the encryption keys separately, perhaps in AWS Key Management Service (KMS), and integrate that process into your logging code.
-
-3.  **Log Persistence:** The re-encrypted data, now a binary blob, is saved to the log collection in DocumentDB. This keeps the logs secure, but it requires a custom, manually-implemented encryption layer within the application itself.
-
-#### FerretDB
-
-FerretDB is an open-source proxy that translates MongoDB wire protocol queries to PostgreSQL or SQLite. Since it's built on a relational database, you must consider the security features of the underlying database.
-
-* **FerretDB Security:** FerretDB supports encryption-in-transit via TLS/SSL connections between the client (your AI agent application) and the FerretDB proxy. However, this doesn't solve the plaintext logging problem, as the data is decrypted in memory once it reaches your application.
-
-* **Manual Re-encryption:** Similar to DocumentDB, you would need to implement a manual, application-level re-encryption step. After the FerretDB tool fetches data and it's in a decrypted state in your application's memory, you would use a standard encryption library to encrypt the sensitive fields.
-
-* **PostgreSQL Encryption:** Since FerretDB uses PostgreSQL as its backend, you can leverage PostgreSQL's native capabilities. While PostgreSQL has server-side encryption-at-rest (like DocumentDB), it also offers features like `pgcrypto` for manual, field-level encryption. You could write a function that encrypts the sensitive data before it is saved to the log table, but this requires direct interaction with the PostgreSQL layer and is not transparent to the application like CSFLE is.
+The key takeaway is that without a technology like CSFLE, achieving the same level of security requires a significant **manual development overhead**. This includes managing a separate cryptographic library, handling key management, and creating custom functions to explicitly re-encrypt data. This effort can be a source of security vulnerabilities if not implemented perfectly, which is why a native solution is so valuable.
 
 In both cases, the key difference is the **lack of transparent, client-side encryption**. This shifts the responsibility from the database driver (like the one used with CSFLE) to the application developer, who must manually handle the re-encryption of sensitive data before it is persisted in the logs.

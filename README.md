@@ -72,3 +72,47 @@ This shifts the conversation from "Is our data safe?" to the more profound and n
 An **enclave** is a term used to describe a secure, isolated environment within a larger system. . The concept is borrowed from geography, where an enclave is a territory completely surrounded by another. Similarly, a technology enclave is a protected space where sensitive operations can occur without risk of interference from the outside.
 
 In the context of our AI agent, the software-based enclave is created by our CSFLE-powered process. The agent operates within a larger, less-secure application, but its handling of sensitive data is confined to a protected "enclave" where data is either encrypted or in-memory, never persisted to a less-secure location like a plaintext log file. This ensures that even if the rest of the application is compromised, the sensitive data remains protected.
+
+Here are some alternative strategies for secure logging and how they'd work with other databases.
+
+### Appendix: Other Secure Logging Alternatives
+
+Besides CSFLE, organizations can employ several other techniques to ensure that sensitive data doesn't end up in plaintext logs. The core principle remains the same: **prevent sensitive information from ever being written in a readable format**.
+
+* **Tokenization and Masking:** Instead of encrypting the entire field, you can replace sensitive values with non-sensitive tokens or masked characters. For example, a Social Security Number (SSN) like `***-**-1234` or a credit card number like `**** **** **** 1234`. The full, unmasked data is never logged. The token can be used to retrieve the original data from a separate, secure vault if needed, but it provides no value to an attacker who finds the log. This is a common practice in PCI DSS (Payment Card Industry Data Security Standard) and HIPAA (Health Insurance Portability and Accountability Act) compliance.
+
+* **Dedicated Data Loss Prevention (DLP) Services:** Many cloud providers offer managed DLP services. These services can be integrated into your application's logging pipeline to automatically detect and redact sensitive data before it is written to a log file. For instance, a log entry containing a credit card number would have that number automatically removed or masked by the DLP service. This shifts the burden of data sanitization from the developer to a dedicated security service.
+
+* **Structured Logging with Exclusion:** Adopt a structured logging approach where each log entry is a JSON object with clearly defined fields. Developers can then create a rule-based system to exclude specific fields (e.g., `user_ssn`, `user_salary`) from the final log document before it's persisted. This is a manual but effective method that relies on strict adherence to a logging schema.
+
+* **In-Memory-Only Processing:** Design the agent's data pipeline to operate as a closed loop in memory. The decrypted data is loaded, used to formulate the answer, and then immediately purged from memory without ever touching a disk. The log would only record a reference to the data, such as a database ID or an encrypted hash, proving that the tool was called and the operation was successful without ever exposing the raw data.
+
+---
+
+### How it Works in DocumentDB or FerretDB
+
+The fundamental challenge with DocumentDB and FerretDB is that they don't have a native client-side encryption feature like MongoDB's CSFLE. This means the re-encryption logic must be implemented manually at the application level.
+
+#### Amazon DocumentDB
+
+Amazon DocumentDB supports encryption-at-rest at the cluster level, which means data is encrypted when it's stored on the disk. However, this is server-side encryption and does **not** protect against the plaintext logging issue you describe.
+
+To achieve a similar secure logging outcome with DocumentDB, you would need to:
+
+1.  **Retrieve Data:** The agent's tool connects to the DocumentDB instance and fetches the data. Since the data is decrypted transparently on the server-side, it exists in plaintext in your application's memory.
+
+2.  **Manual Re-encryption:** Your application code must explicitly re-encrypt the sensitive fields before logging. Instead of using a native CSFLE method, you'd use a general-purpose cryptographic library (e.g., AWS KMS, OpenSSL) to encrypt the fields you want to protect. You would need to manage the encryption keys separately, perhaps in AWS Key Management Service (KMS), and integrate that process into your logging code.
+
+3.  **Log Persistence:** The re-encrypted data, now a binary blob, is saved to the log collection in DocumentDB. This keeps the logs secure, but it requires a custom, manually-implemented encryption layer within the application itself.
+
+#### FerretDB
+
+FerretDB is an open-source proxy that translates MongoDB wire protocol queries to PostgreSQL or SQLite. Since it's built on a relational database, you must consider the security features of the underlying database.
+
+* **FerretDB Security:** FerretDB supports encryption-in-transit via TLS/SSL connections between the client (your AI agent application) and the FerretDB proxy. However, this doesn't solve the plaintext logging problem, as the data is decrypted in memory once it reaches your application.
+
+* **Manual Re-encryption:** Similar to DocumentDB, you would need to implement a manual, application-level re-encryption step. After the FerretDB tool fetches data and it's in a decrypted state in your application's memory, you would use a standard encryption library to encrypt the sensitive fields.
+
+* **PostgreSQL Encryption:** Since FerretDB uses PostgreSQL as its backend, you can leverage PostgreSQL's native capabilities. While PostgreSQL has server-side encryption-at-rest (like DocumentDB), it also offers features like `pgcrypto` for manual, field-level encryption. You could write a function that encrypts the sensitive data before it is saved to the log table, but this requires direct interaction with the PostgreSQL layer and is not transparent to the application like CSFLE is.
+
+In both cases, the key difference is the **lack of transparent, client-side encryption**. This shifts the responsibility from the database driver (like the one used with CSFLE) to the application developer, who must manually handle the re-encryption of sensitive data before it is persisted in the logs.
